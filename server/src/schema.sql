@@ -1,23 +1,25 @@
-create table uploadedFile(
-    fileID integer primary key auto_increment,
-    typeNum text NOT NULL,
+USE DATABASE battery;
+
+CREATE TABLE uploadedFile(
+    fileID INTEGER PRIMARY KEY AUTO_INCREMENT,
+    typeNum TEXT NOT NULL,
     uploadTime TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-create table cycle_capacity(
-    cycleID integer primary key auto_increment,
-    fileID integer NOT NULL,
-    cycleNum integer NOT NULL,
+CREATE TABLE cycle_capacity(
+    cycleID INTEGER PRIMARY KEY AUTO_INCREMENT,
+    fileID INTEGER NOT NULL,
+    cycleNum INTEGER NOT NULL,
     capacity DECIMAL(20, 15) NOT NULL,
     FOREIGN KEY (fileID) REFERENCES uploadedFile(fileID)
 );
 
-create table cycle_data(
-    TCVID integer primary key auto_increment,
+CREATE TABLE cycle_data(
+    TCVID INTEGER PRIMARY KEY AUTO_INCREMENT,
     cycleTime DECIMAL(10, 1) NOT NULL,
     current DECIMAL(20, 15) NOT NULL,
     voltage DECIMAL(20, 15) NOT NULL,
-    fileID integer NOT NULL,
-    cycleNum integer NOT NULL,
+    fileID INTEGER NOT NULL,
+    cycleNum INTEGER NOT NULL,
     FOREIGN KEY (fileID) REFERENCES uploadedFile(fileID)
 );
