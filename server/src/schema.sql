@@ -1,8 +1,3 @@
--- Enable LOAD DATA LOCAL INFILE
-SET GLOBAL local_infile=true;
-
-USE battery;
-
 CREATE TABLE uploadedFile(
     fileID INTEGER PRIMARY KEY AUTO_INCREMENT,
     testName VARCHAR(100) NOT NULL,

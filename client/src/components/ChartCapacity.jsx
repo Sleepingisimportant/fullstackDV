@@ -4,6 +4,9 @@ import { downloadChart } from "./DownloadChart";
 
 function ChartCapacity({ selectedFileID, dataExist }) {
   const [data, setData] = useState([]);
+  const [tooltipX, setTooltipX] = useState(0);
+  const [tooltipY, setTooltipY] = useState(0);
+
   const chartRef = useRef(null);
 
   useEffect(() => {
@@ -11,7 +14,7 @@ function ChartCapacity({ selectedFileID, dataExist }) {
     const fetchData = async () => {
       try {
         const result = await fetch(
-          `http://localhost:3000/getCapacity/${selectedFileID}`
+          `https://fullstackdvserver.onrender.com/getCapacity/${selectedFileID}`
         )
           .then((response) => {
             if (response.status !== 200) {
@@ -58,7 +61,38 @@ function ChartCapacity({ selectedFileID, dataExist }) {
       .select(chartRef.current)
       .append("svg")
       .attr("width", parentWidth)
-      .attr("height", parentWidth / 2.5);
+      .attr("height", parentWidth>500? parentWidth/ 2.5:200)
+      .on("mousemove", function (event) {
+        const [mouseX, mouseY] = d3.pointer(event, svg.node());
+        if (mouseX >= margin.left && mouseX <= width - margin.right) {
+          // Invert scales to get corresponding x and y values
+          const xValue = x.invert(mouseX);
+          const yValue = getYValueAtX(xValue);
+          setTooltipX(xValue.toFixed(0));
+          setTooltipY(yValue.toFixed(2));
+        }
+      });
+
+    function getYValueAtX(xValue) {
+      // Use d3.bisector to find the index in the data array corresponding to the x value
+      const bisect = d3.bisector((d) => d.cycleNum).left;
+      const index = bisect(data, xValue);
+
+      // Determine which point is closer to the xValue
+      let closestIndex;
+      if (index === 0) {
+        closestIndex = index;
+      } else if (index >= data.length) {
+        closestIndex = data.length - 1;
+      } else {
+        const leftDistance = Math.abs(data[index - 1].cycleNum - xValue);
+        const rightDistance = Math.abs(data[index].cycleNum - xValue);
+        closestIndex = leftDistance < rightDistance ? index - 1 : index;
+      }
+
+      // Return the y value of the closest data point
+      return parseFloat(data[closestIndex].capacity);
+    }
 
     // Set margins and dimensions
     const margin = { top: 30, right: 60, bottom: 80, left: 60 };
@@ -95,7 +129,7 @@ function ChartCapacity({ selectedFileID, dataExist }) {
       .attr("x", width / 2)
       .attr("y", margin.bottom * 0.6)
       .attr("text-anchor", "middle")
-      .text("Cycle")
+      .text("CYCLE")
       .classed("axis-label", true);
 
     // Add y axis
@@ -112,7 +146,7 @@ function ChartCapacity({ selectedFileID, dataExist }) {
       .attr("x", -height / 2)
       .attr("dy", "1em")
       .attr("text-anchor", "middle")
-      .text("Capacity")
+      .text("CAPACITY")
       .classed("axis-label", true);
 
     // Define clip path
@@ -121,8 +155,8 @@ function ChartCapacity({ selectedFileID, dataExist }) {
       .append("clipPath")
       .attr("id", "clip")
       .append("rect")
-      .attr("width", width - margin.left - margin.right)
-      .attr("height", height - margin.top - margin.bottom)
+      .attr("width", width - margin.left - margin.right>=0?width - margin.left - margin.right:0)
+      .attr("height", height - margin.top - margin.bottom>=0?height - margin.top - margin.bottom:0)
       .attr("x", margin.left)
       .attr("y", margin.top);
 
@@ -131,6 +165,8 @@ function ChartCapacity({ selectedFileID, dataExist }) {
       .line()
       .x((d) => x(d.cycleNum))
       .y((d) => y(+d.capacity));
+
+    const tooltipArea = d3.select(".tooltip-area");
 
     // Add line to SVG
     svg
@@ -151,7 +187,7 @@ function ChartCapacity({ selectedFileID, dataExist }) {
       .attr("fill", "#00A9FF")
       .text("Capacity")
       .attr("text-anchor", "end")
-      .style("font-size", "12px")
+      .style("font-size", "1.2vw")
       .style("alignment-baseline", "middle");
 
     // Enable zooming
@@ -193,6 +229,14 @@ function ChartCapacity({ selectedFileID, dataExist }) {
     <>
       {data.length != 0 ? (
         <>
+          <div className="tooltip-area">
+            <div className="tooltip-type">
+              Cycle:<span className="tooltip-value">{tooltipX}</span>
+            </div>
+            <div className="tooltip-type">
+              Capacity:<span className="tooltip-value">{tooltipY}</span>
+            </div>
+          </div>
           <div className="chart-container  flex-grow-1" ref={chartRef}></div>
           <div className="button-container">
             <div className={` button `} onClick={() => downloadChart(chartRef)}>

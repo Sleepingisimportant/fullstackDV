@@ -15,7 +15,9 @@ function DropdownComponent({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await fetch(api)
+        const result = await fetch(
+          "https://fullstackdvserver.onrender.com/" + api
+        )
           .then((response) => {
             if (response.status !== 200) {
               throw new Error("Fetch data fail!");
@@ -24,7 +26,9 @@ function DropdownComponent({
           })
           .then((data) => {
             // Handle successful response data
-            data.length > 0 ? setData(data) : null;
+            if (data.length > 0) {
+              api == "getFiles" ? setData(data.reverse()) : setData(data);
+            }
             return data;
           });
       } catch (error) {

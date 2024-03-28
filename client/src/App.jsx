@@ -44,7 +44,7 @@ function App() {
             <div className="same-row-space-between">
               <div className="block-title">Capacity</div>
               <DropdownComponent
-                api={"http://localhost:3000/getFiles"}
+                api={"getFiles"}
                 queryDataShow={1}
                 dropdownText={"CHOOSE FILE:"}
                 dropdownItemText={"FILE: "}
@@ -65,7 +65,7 @@ function App() {
               <div className="block-title"> Current / Voltage</div>
               <DropdownComponent
                 selectedFileID={selectedFileID}
-                api={`http://localhost:3000/getCycleNum/${selectedFileID}`}
+                api={`getCycleNum/${selectedFileID}`}
                 queryDataShow={0}
                 dropdownText={"CHOOSE CYCLE:"}
                 dropdownItemText={"CYCLE "}

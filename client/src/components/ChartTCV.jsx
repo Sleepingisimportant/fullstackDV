@@ -11,7 +11,7 @@ function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
     const fetchData = async () => {
       try {
         const result = await fetch(
-          `http://localhost:3000/getTCV/${selectedFileID}/${selectedCycleNum}`
+          `https://fullstackdvserver.onrender.com/getTCV/${selectedFileID}/${selectedCycleNum}`
         )
           .then((response) => {
             if (response.status !== 200) {
@@ -57,7 +57,7 @@ function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
       .select(chartRef.current)
       .append("svg")
       .attr("width", parentWidth)
-      .attr("height", parentWidth / 2.5);
+      .attr("height", parentWidth>500? parentWidth/ 2.5:200)
 
     // Set margins and dimensions
     const margin = { top: 30, right: 60, bottom: 80, left: 60 }; // Increased bottom and left margin for axis labels
@@ -103,7 +103,7 @@ function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
       .attr("x", width / 2)
       .attr("y", margin.bottom * 0.6)
       .attr("text-anchor", "middle")
-      .text("Cycle Time (seconds)")
+      .text("CYCLE TIME (seconds)")
       .classed("axis-label", true);
 
     // Add y axis for current
@@ -120,7 +120,7 @@ function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
       .attr("x", -height / 2)
       .attr("dy", "1em")
       .attr("text-anchor", "middle")
-      .text("Current (A)")
+      .text("CURRENT (A)")
       .classed("axis-label", true);
 
     // Add y axis for voltage
@@ -137,7 +137,7 @@ function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
       .attr("x", -height / 2) // Adjusted positioning
       .attr("dy", "1em")
       .attr("text-anchor", "middle")
-      .text("Voltage (V)")
+      .text("VOLTAGE (V)")
       .classed("axis-label", true);
 
     // Define clip path
@@ -146,8 +146,8 @@ function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
       .append("clipPath")
       .attr("id", "clip")
       .append("rect")
-      .attr("width", width - margin.left - margin.right)
-      .attr("height", height - margin.top - margin.bottom)
+      .attr("width", width - margin.left - margin.right>=0?width - margin.left - margin.right:0)
+      .attr("height", height - margin.top - margin.bottom>=0?height - margin.top - margin.bottom:0)
       .attr("x", margin.left)
       .attr("y", margin.top);
 
@@ -197,7 +197,7 @@ function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
       .attr("fill", "#FFC700")
       .text("Current")
       .attr("text-anchor", "end")
-      .style("font-size", "12px")
+      .style("font-size", "1.2vw")
       .style("alignment-baseline", "middle");
 
     // Legend for voltage
@@ -208,7 +208,7 @@ function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
       .attr("fill", "#4CCD99")
       .text("Voltage")
       .attr("text-anchor", "end")
-      .style("font-size", "12px")
+      .style("font-size", "1.2vw")
       .style("alignment-baseline", "middle");
 
     // Enable zooming

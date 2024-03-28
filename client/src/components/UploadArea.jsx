@@ -56,7 +56,7 @@ function UploadArea({ isUploading }) {
       formData.append("fileCapacity", fileCapacity);
       formData.append("fileTCV", fileTCV);
 
-      await fetch("http://localhost:3000/uploadFile", {
+      await fetch("https://fullstackdvserver.onrender.com/uploadFile", {
         method: "POST",
         body: formData,
       })

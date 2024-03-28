@@ -1,7 +1,9 @@
 # **Data Visualization Tool**
 
-## **Version: 0.2**
+## **Version: 0.3**
 
+- **0.3**:
+   -  deployed the solution on netifly (front) and render(server)
 - **0.2**:
   - improved load csv speed (from over 30 seconds to 1 second). Using LOAD DATA INFILE instead of inserting rows respectively.
   - improved upload file error handling, including
@@ -13,6 +15,9 @@
 ### **PROJECT GOAL**
 
 The goal of this project is to develop a data analysis tool that visualizes data from large CSV files. The features and workflow are presented below.
+
+### **DEPLOYMENT**
+- URL: https://fullstackdv.netlify.app/
 
 ### **TECHNICAL STRUCTURE**
 
@@ -55,83 +60,3 @@ The goal of this project is to develop a data analysis tool that visualizes data
 4. **Download Chart:** Users can configure the chart and download it (including configuration).
 
    [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/KoOus5dZF20/0.jpg)](https://www.youtube.com/watch?v=KoOus5dZF20)
-
-### **PROJECT SETUP**
-
-1. **Clone Project:** Clone the project from GitHub.
-
-2. **Prepare MySQL Database:**
-
-   - Start MySQL DB and create a database for the project.
-
-   ```jsx
-   CREATE DATABASE battery;
-   ```
-
-   - The schema for the table creation is as below. It can also be found at `fullstackDV/server/schema.sql`
-
-   ```jsx
-   -- Enable LOAD DATA LOCAL INFILE
-   SET GLOBAL local_infile=true;
-
-   USE battery;
-
-   CREATE TABLE uploadedFile(
-   fileID INTEGER PRIMARY KEY AUTO_INCREMENT,
-   testName VARCHAR(100) NOT NULL,
-   uploadTime TIMESTAMP NOT NULL DEFAULT NOW()
-   );
-
-   CREATE TABLE cycle_capacity(
-   cycleNum INTEGER NOT NULL,
-   capacity DECIMAL(20, 15) NOT NULL,
-   cycleID INTEGER PRIMARY KEY AUTO_INCREMENT,
-   fileID INTEGER NOT NULL,
-   FOREIGN KEY (fileID) REFERENCES uploadedFile(fileID)
-   );
-
-   CREATE TABLE cycle_data(
-   cycleNum INT NOT NULL,
-   cycleTime DECIMAL(10, 1) NOT NULL,
-   current DECIMAL(20, 15) NOT NULL,
-   voltage DECIMAL(20, 15) NOT NULL,
-   TCVID INTEGER PRIMARY KEY AUTO_INCREMENT,
-   fileID INTEGER NOT NULL,
-   FOREIGN KEY (fileID) REFERENCES uploadedFile(fileID)
-   );
-   ```
-
-
-
-- Create a **`.env`** file in the root of the **`fullstackDV/server`** directory with the following content:
-
-```
-
-MYSQL_HOST='127.0.0.1'
-MYSQL_USER='root'
-MYSQL_PASSWORD='[Fill in your MySQL password]'
-MYSQL_DATABASE='battery'
-
-```
-
-3. **Run Commands:**
-
-```
-
-cd fullstackDV/server
-npm install
-npm run dev
-
-cd fullstackDV/client
-npm install
-npm run dev
-
-```
-
-4. **Access Project:** Click the link provided by Vite in the terminal. The project should now be running.
-
-###
-
-###
-
-
