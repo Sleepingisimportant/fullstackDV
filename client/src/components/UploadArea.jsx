@@ -3,22 +3,48 @@ import React, { useState } from "react";
 function UploadArea({ isUploading }) {
   const [fileCapacity, setFileCapacity] = useState(null);
   const [fileTCV, setFileTCV] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState(false);
 
-  const handleFileChange = (id, e) => {
-    setUploadError(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  const errorMsgFileTypeInconsistency = "WRONG FILE TYPE!! PLEASE TRY AGAIN!";
+  const errorMsgFileTestNumInconsistency =
+    "UPLOADED FILES ARE FROM DIFFERENT TESTS. PLEASE TRY AGAIN!";
+
+  const handleFileChange = (e) => {
+    setUploadError(null);
     const file = e.target.files[0];
-    if (file) {
-      if (id === "fileCapacity") {
-        setFileCapacity(file);
-      } else {
-        setFileTCV(file);
-      }
+    const fileName = file["name"];
+    const fileType =
+      fileName.match(/(?:[^_]+_){2}([^_]+)/)[1] == "capacity"
+        ? "fileCapacity"
+        : "fileTCV";
+    const uploadedField = e.target.id;
+
+    //If uploaded file doesnt match the field
+    if (fileType != uploadedField) {
+      setUploadError(errorMsgFileTypeInconsistency);
+      uploadedField == "fileCapacity"
+        ? setFileCapacity(null)
+        : setFileTCV(null);
+      return;
+    } else {
+      setUploadError(null);
+      uploadedField == "fileCapacity"
+        ? setFileCapacity(file)
+        : setFileTCV(file);
     }
   };
 
   const handleUpload = async () => {
+    //if both uploaded files do not come from same test, then show error message
+    if (
+      fileCapacity["name"].match(/[^_]+_[^_]+/)[0] !=
+      fileTCV["name"].match(/[^_]+_[^_]+/)[0]
+    ) {
+      setUploadError(errorMsgFileTestNumInconsistency);
+      return;
+    }
     if (fileCapacity && fileTCV) {
       setUploading(true);
 
@@ -35,17 +61,14 @@ function UploadArea({ isUploading }) {
         body: formData,
       })
         .then((response) => {
-          // Handle error response data
-
           if (!response.ok) {
-            setUploadError(true);
+            setUploadError("SOMETHING WRONG. PLEASE RELOAD THE PAGE.");
             setUploading(false);
             isUploading(false);
             throw new Error("Uploading result was not ok");
           }
         })
         .then((data) => {
-          console.log(data);
           setUploading(false);
           isUploading(false);
 
@@ -68,11 +91,11 @@ function UploadArea({ isUploading }) {
             <label className="file-input-label">
               {fileCapacity == null
                 ? "Click to upload a file ....."
-                : "UPLOADED: " + fileCapacity.name}
+                :  fileCapacity.name}
               <input
                 id="fileCapacity"
                 type="file"
-                onChange={(e) => handleFileChange("fileCapacity", e)}
+                onChange={(e) => handleFileChange(e)}
               />
             </label>
           </div>
@@ -81,11 +104,11 @@ function UploadArea({ isUploading }) {
             <label className="file-input-label">
               {fileTCV == null
                 ? "Click to upload a file ....."
-                : "UPLOADED: " + fileTCV.name}
+                :  fileTCV.name}
               <input
                 id="fileTCV"
                 type="file"
-                onChange={(e) => handleFileChange("fileTCV", e)}
+                onChange={(e) => handleFileChange(e)}
               />
             </label>
           </div>
@@ -97,9 +120,7 @@ function UploadArea({ isUploading }) {
               UPLOAD
             </div>
           </div>
-          {uploadError ? (
-            <div className="error-text">UPLOAD FAIL!! PLEASE TRY AGAIN!</div>
-          ) : null}
+          {uploadError ? <div className="error-text">{uploadError}</div> : null}
         </div>
       )}
     </>

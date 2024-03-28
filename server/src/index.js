@@ -4,6 +4,15 @@ import multer from "multer";
 import mysql from "mysql2";
 import dotenv from "dotenv";
 
+import fs from "fs/promises";
+import { createReadStream } from "node:fs";
+
+import { fileURLToPath } from "url";
+import path, { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 dotenv.config();
 
 const app = express();
@@ -14,7 +23,6 @@ app.use(express.json());
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-
 //database connection
 const pool = mysql
   .createPool({
@@ -22,10 +30,9 @@ const pool = mysql
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE,
+    flags: ["+LOCAL_FILES"],
   })
   .promise();
-
-
 
 //API
 app.get("/getFiles", async (req, res) => {
@@ -85,55 +92,59 @@ app.post(
   "/uploadFile",
   upload.fields([{ name: "fileCapacity" }, { name: "fileTCV" }]),
   async (req, res) => {
-    const fileName = req.files["fileCapacity"][0]["originalname"];
-    const fileCapacity = req.files["fileCapacity"][0];
-    const fileTCV = req.files["fileTCV"][0];
-
-    const fileCapacityContent = fileCapacity.buffer
-      .toString("utf8")
-      .split("\n");
-    const fileTCVContent = fileTCV.buffer.toString("utf8").split("\n");
-
-    let fileID;
     try {
-      const typeNum = fileName.match(/[^_]+_[^_]+/)[0];
+      const fileCapacity = req.files["fileCapacity"][0];
+      const fileTCV = req.files["fileTCV"][0];
+      const testName =
+        req.files["fileCapacity"][0]["originalname"].match(/[^_]+_[^_]+/)[0];
+
       const uploadFile = await pool.query(
-        "INSERT INTO uploadedFile (typeNum) VALUES (?)",
-        [typeNum]
+        "INSERT INTO uploadedFile (testName) VALUES (?)",
+        [testName]
       );
-      fileID = uploadFile[0].insertId;
+      const fileID = uploadFile[0].insertId;
 
-      for (let i = 1; i < fileCapacityContent.length - 1; i++) {
-        const line = fileCapacityContent[i];
-        const [cycleNum, capacity] = line.split(",");
-        const sqlCapacity =
-          "INSERT INTO cycle_capacity (capacity, cycleNum, fileID) VALUES (?, ?, ?)";
-        await pool.query(sqlCapacity, [capacity, cycleNum, fileID]);
-      }
-      console.log("Capacity INSERTED!");
+      // save the uploaded file to the backend
+      const fileCapacityPath = path.join(__dirname, fileCapacity.originalname);
+      await fs.writeFile(fileCapacityPath, fileCapacity.buffer);
 
-      for (let i = 1; i < fileTCVContent.length - 1; i++) {
-        const line = fileTCVContent[i];
-        const [cycleNum, cycleTime, current, voltage] = line.split(",");
+      const fileTCVPath = path.join(__dirname, fileTCV.originalname);
+      await fs.writeFile(fileTCVPath, fileTCV.buffer);
 
-        const sqlTCV =
-          "INSERT INTO cycle_data (cycleTime, current, voltage, fileID, cycleNum) VALUES (?, ?, ?, ?, ?)";
-        await pool.query(sqlTCV, [
-          cycleTime,
-          current,
-          voltage,
-          fileID,
-          cycleNum,
-        ]);
-      }
-      console.log("TCV INSERTED!");
+      // use LOAD DATA INFILE to insert file content into sql db
+      const sqlLoadCapacity = `LOAD DATA LOCAL INFILE '${fileCapacityPath}' INTO TABLE cycle_capacity 
+      FIELDS TERMINATED BY ',' 
+      LINES TERMINATED BY '\n' 
+      IGNORE 1 ROWS 
+      (@cycle_num, capacity, cycleID, fileID)
+      SET cycleNum = @cycle_num, fileID = '${fileID}'`;
+      await pool.query({
+        sql: sqlLoadCapacity,
+        infileStreamFactory: () => createReadStream(fileCapacityPath),
+      });
+
+      const sqlLoadTCV = `
+      LOAD DATA LOCAL INFILE '${fileTCVPath}' 
+      INTO TABLE cycle_data 
+      FIELDS TERMINATED BY ',' 
+      LINES TERMINATED BY '\n' 
+      IGNORE 1 ROWS
+      (@cycle_num, @time, current, voltage, TCVID, fileID)
+      SET cycleNum = @cycle_num, cycleTime = @time, fileID = '${fileID}'`;
+      const result = await pool.query({
+        sql: sqlLoadTCV,
+        infileStreamFactory: () => createReadStream(fileTCVPath),
+      });
+
+      // delete the files in the directory
+      await fs.unlink(fileCapacityPath);
+      await fs.unlink(fileTCVPath);
 
       res.status(200).send({ ok: true });
     } catch (error) {
       await pool.query("DELETE FROM cycle_data WHERE fileID = ?", [fileID]);
       await pool.query("DELETE FROM cycle_capacity WHERE fileID = ?", [fileID]);
       await pool.query("DELETE FROM uploadedFile WHERE fileID = ?", [fileID]);
-
       console.error("Error uploading file:", error);
       res.status(500).send("Internal Server Error");
     }

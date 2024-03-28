@@ -24,7 +24,6 @@ function ChartCapacity({ selectedFileID, dataExist }) {
             if (data.length > 0) {
               dataExist(true);
             }
-            console.log(data);
             return data;
           });
       } catch (error) {
