@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import hosting from "./hosting";
 
 function UploadArea({ isUploading }) {
   const [fileCapacity, setFileCapacity] = useState(null);
@@ -55,8 +56,9 @@ function UploadArea({ isUploading }) {
       const formData = new FormData();
       formData.append("fileCapacity", fileCapacity);
       formData.append("fileTCV", fileTCV);
+     
 
-      await fetch("https://fullstackdvserver.onrender.com/uploadFile", {
+      await fetch( `${hosting}/uploadFile`, {
         method: "POST",
         body: formData,
       })

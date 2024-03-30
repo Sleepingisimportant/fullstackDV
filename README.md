@@ -1,7 +1,11 @@
 # **Data Visualization Tool**
 
-## **Version: 0.3**
-
+## **Version: 1.0**
+- **1.0**:
+   - add features: 
+      - edit axis label, legend color
+      - change chart type (line, scatter)
+      - change plot parameter, data filtering
 - **0.3**:
    -  deployed the solution on netifly (front) and render(server)
 - **0.2**:
@@ -19,44 +23,53 @@ The goal of this project is to develop a data analysis tool that visualizes data
 ### **DEPLOYMENT**
 - URL: https://fullstackdv.netlify.app/
 
+### **VIDEO SHOWCASE**
+
+[![Watch the video](https://img.youtube.com/vi/JYviuRHKjyo/maxresdefault.jpg)](http://www.youtube.com/watch?v=JYviuRHKjyo "Version 1.0")
+
 ### **TECHNICAL STRUCTURE**
 
 - **Backend:** Utilizes Node.js and Express.js for building the backend.
 - **Frontend:** Built with React (Vite), and the page is responsive to a certain degree.
-- **Database**: MySQL
+- **Database**: MySQL 
+- **DEPLOYMENT**: 
+   - **Backend:**  Render
+   - **Frontend:** Netilify
+   - **Database**: freemysqlhosting.net
+
 
 ### **ASSUMPTION & RESTRICTION**
 
 - It is assumed that users upload two CSV files, one contains capacity data, another contains current and voltage file. The two files belongs to the same battery test.
 
-### **FEATURES**
+### **WORKFLOW**
 
 1. **File Upload:**
 
    - If no file has been uploaded, no data will be shown, and all the filters and dropdowns will also be hidden. The Upload button will be activated when two files are uploaded. Once users click the button "UPLOAD," the loading gif will be shown, and other sections will be hidden.
    - Once the upload is finished, the charts below will show the latest uploaded file data.
 
-   [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/KacNl62ly2k/0.jpg)](https://www.youtube.com/watch?v=KacNl62ly2k)
 
    - If the uploaded files do not meet the expected format (thus, they cannot be successfully inserted into the database), an error message will appear on the screen. If the uploaded files are not from same test, the upload will fail and error message will be shown.
 
-   [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/7rv8G3TRo0s/0.jpg)](https://www.youtube.com/watch?v=7rv8G3TRo0s)
 
 2. **Capacity Section:**
 
    - Users can find a line chart in this section, which presents the capacity data per cycle from the selected file. The default file is the latest uploaded file. Users can pan and zoom in-and-out of the graph (both x and y-axis).
    - The dropdown "CHOOSE FILE" lists all the uploaded files, including their name and upload time.
+   - User can change color of the legend and edit the axis label name.
+   - Users can select either line chart or scatter chart. (Default: Line chart)
+   - Users can add conditions to filter the capacity data. If the condition leads to no data being shown, the condition will be established. (Default: No condition)
+   - Users can configure the chart and download it (including configuration).
 
-   [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/C7I4jKKUH-c/0.jpg)](https://www.youtube.com/watch?v=C7I4jKKUH-c)
 
 3. **Current/Voltage Section:**
 
    - Users can find a line chart in this section, which presents the voltage and current data based on the chosen file and the chosen cycle. The default cycle is CYCLE 1. Users can pan and zoom in-and-out of the graph (both x and y-axis).
    - The dropdown "CHOOSE CYCLE" lists all the cycles of the selected file.
-   - A filter is provided for users to decide which line (current or voltage or both or none) to be shown in the chart.
+   - User can change color of the legend and edit the axis label name.
+   - Users can select either line chart or scatter chart. (Default: Line chart)
+   - Users can select to show Voltage or Current or both. If Current is not being selected, then filter by current data is also hidden. Same applies to Voltage. (Default: Both)
+   - Users can add conditions to filter the current and voltage data. If the condition leads to no data being shown, the condition will be established. (Default: No condition)
+   - Users can configure the chart and download it (including configuration).
 
-   [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/j8eSEoc5A04/0.jpg)](https://www.youtube.com/watch?v=j8eSEoc5A04)
-
-4. **Download Chart:** Users can configure the chart and download it (including configuration).
-
-   [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/KoOus5dZF20/0.jpg)](https://www.youtube.com/watch?v=KoOus5dZF20)

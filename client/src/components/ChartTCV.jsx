@@ -1,18 +1,54 @@
 import React, { useEffect, useState, useRef } from "react";
 import * as d3 from "d3";
-import { downloadChart } from "./DownloadChart";
+import DownloadChart from "./DownloadChart";
+import PopupAxisLable from "./PopupAxisLable";
+import PopupLegendColor from "./PopupLegendColor";
+import PopupFilterCondition from "./PopupFilterCondition";
+import FilterChartType from "./FilterChartType";
+import FilterLegned from "./FilterLegend";
+import FilterData from "./FilterData";
+import { drawChartTimeCurrent } from "./drawChart";
+import hosting from "./hosting";
+import ComponentTooltip from "./ComponentTooltip";
 
-function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
+function ChartTCV({ selectedFileID, selectedCycleNum }) {
   const [data, setData] = useState([]);
+  const [tooltipX, setTooltipX] = useState(0);
+  const [tooltipYCurrent, setTooltipYCurrent] = useState(0);
+  const [tooltipYVoltage, setTooltipYVoltage] = useState(0);
+  const [selectedAxis, setSelectedAxis] = useState("");
+  const [showPopupRenameLabel, setShowPopupRenameLabel] = useState(false);
+  const [showPopupColorLegend, setShowPopupColorLegend] = useState(false);
+  const [showPopupFilterCurrent, setShowPopupFilterCurrent] = useState(false);
+  const [showPopupFilterVoltage, setShowPopupFilterVoltage] = useState(false);
+  const [selectedLegend, setSelectedLegend] = useState("");
+  const [filterChart, setFilterChart] = useState("Line");
+  const [currentFilter, setCurrentFilter] = useState([]);
+  const [voltageFilter, setVoltageFilter] = useState([]);
+  const [latestSetFilter, setLatestSetFilter] = useState("");
+  const [filterCurrentVoltage, setFilterCurrentVoltage] = useState({
+    Voltage: true,
+    Current: true,
+  });
   const chartRef = useRef();
+
+  const notationMapping = {
+    greater: ">",
+    smaller: "<",
+    greaterEqual: ">=",
+    smallerEqual: "<=",
+    equal: "=",
+  };
 
   useEffect(() => {
     // api - fetch current voltage data when the selected file and cycle is updated
     const fetchData = async () => {
       try {
-        const result = await fetch(
-          `https://fullstackdvserver.onrender.com/getTCV/${selectedFileID}/${selectedCycleNum}`
-        )
+        const currentFilterString = JSON.stringify(currentFilter);
+        const voltageFilterString = JSON.stringify(voltageFilter);
+
+        const url = `${hosting}/getTCV/${selectedFileID}/${selectedCycleNum}/${currentFilterString}/${voltageFilterString}`;
+        const result = await fetch(url)
           .then((response) => {
             if (response.status !== 200) {
               throw new Error("Fetch data fail!");
@@ -20,8 +56,23 @@ function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
             return response.json();
           })
           .then((data) => {
+            //if filter return no data, then delete the filter
             setData(data);
-            return data;
+            if (latestSetFilter && data.length === 0) {
+              if (latestSetFilter == "current") {
+                setCurrentFilter((prevCurrentFilter) => {
+                  const newCurrentFilter = prevCurrentFilter.slice(0, -1);
+                  return newCurrentFilter;
+                });
+              } else {
+                setVoltageFilter((prevVoltageFilter) => {
+                  const newVoltageFilter = prevVoltageFilter.slice(0, -1);
+                  return newVoltageFilter;
+                });
+              }
+            } else {
+              setData(data);
+            }
           });
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -29,247 +80,232 @@ function ChartTCV({ selectedFileID, selectedCycleNum, filterCurrentVoltage }) {
     };
 
     fetchData();
-  }, [selectedFileID, selectedCycleNum]);
+  }, [selectedFileID, selectedCycleNum, currentFilter, voltageFilter]);
 
   useEffect(() => {
     if (data.length === 0) return;
     // Clear previous chart if it exists
     d3.select(chartRef.current).selectAll("*").remove();
-    drawChart();
+    // drawChart();
+    drawChartTimeCurrent(
+      data,
+      chartRef,
+      filterChart,
+      handleXAxisLabelClick,
+      handleYCurrentAxisLabelClick,
+      handleYVoltageAxisLabelClick,
+      handleCurrentLegendClick,
+      handleVoltageLegendClick,
+      setTooltipX,
+      setTooltipYCurrent,
+      setTooltipYVoltage,
+      filterCurrentVoltage
+    );
 
     // Update SVG dimensions when the window is resized
     window.addEventListener("resize", () => {
       // Clear previous chart if it exists
       d3.select(chartRef.current).selectAll("*").remove();
-      drawChart();
+      // drawChart();
+      drawChartTimeCurrent(
+        data,
+        chartRef,
+        filterChart,
+        handleXAxisLabelClick,
+        handleYCurrentAxisLabelClick,
+        handleYVoltageAxisLabelClick,
+        handleCurrentLegendClick,
+        handleVoltageLegendClick,
+        setTooltipX,
+        setTooltipYCurrent,
+        setTooltipYVoltage,
+        filterCurrentVoltage
+      );
     });
-  }, [data, filterCurrentVoltage]);
+  }, [data, filterCurrentVoltage, filterChart]);
 
-  function drawChart() {
-    // Clear previous chart if it exists
-    d3.select(chartRef.current).selectAll("*").remove();
+  useEffect(() => {}, [filterChart]);
 
-    // Get dimensions of the parent container
-    const parentWidth = chartRef.current.clientWidth;
-
-    // Access the DOM element to draw the chart
-    const svg = d3
-      .select(chartRef.current)
-      .append("svg")
-      .attr("width", parentWidth)
-      .attr("height", parentWidth>500? parentWidth/ 2.5:200)
-
-    // Set margins and dimensions
-    const margin = { top: 30, right: 60, bottom: 80, left: 60 }; // Increased bottom and left margin for axis labels
-    const width = +svg.attr("width");
-    const height = +svg.attr("height");
-
-    // Create x scale
-    const x = d3
-      .scaleLinear()
-      .domain([
-        d3.min(data, (d) => d.cycleTime),
-        d3.max(data, (d) => d.cycleTime),
-      ])
-      .range([margin.left, width - margin.right]);
-
-    // Create y scale for current
-    const yCurrent = d3
-      .scaleLinear()
-      .domain([
-        d3.min(data, (d) => +d.current) - 0.003,
-        d3.max(data, (d) => +d.current) + 0.003,
-      ])
-      .range([height - margin.bottom, margin.top]);
-
-    // Create y scale for voltage
-    const yVoltage = d3
-      .scaleLinear()
-      .domain([
-        d3.min(data, (d) => +d.voltage) - 0.1,
-        d3.max(data, (d) => +d.voltage) + 0.1,
-      ])
-      .range([height - margin.bottom, margin.top]);
-
-    // Add x axis
-    const xAxis = d3.axisBottom(x).tickSizeOuter(0);
-    svg
-      .append("g")
-      .attr("class", "x-axis")
-      .call(xAxis)
-      .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(x).ticks(parentWidth / 100))
-      .append("text") // X axis label
-      .attr("x", width / 2)
-      .attr("y", margin.bottom * 0.6)
-      .attr("text-anchor", "middle")
-      .text("CYCLE TIME (seconds)")
-      .classed("axis-label", true);
-
-    // Add y axis for current
-    const yAxisCurrent = d3.axisLeft(yCurrent).tickSizeOuter(0);
-    svg
-      .append("g")
-      .attr("class", "y-axis-current")
-      .call(yAxisCurrent)
-      .attr("transform", `translate(${margin.left},0)`)
-      .call(d3.axisLeft(yCurrent).ticks(parentWidth / 150))
-      .append("text") // Y axis label for current
-      .attr("transform", "rotate(-90)")
-      .attr("y", -margin.left * 1)
-      .attr("x", -height / 2)
-      .attr("dy", "1em")
-      .attr("text-anchor", "middle")
-      .text("CURRENT (A)")
-      .classed("axis-label", true);
-
-    // Add y axis for voltage
-    const yAxisVoltage = d3.axisRight(yVoltage).tickSizeOuter(0);
-    svg
-      .append("g")
-      .attr("class", "y-axis-voltage")
-      .call(yAxisVoltage)
-      .attr("transform", `translate(${width - margin.right},0)`)
-      .call(d3.axisRight(yVoltage).ticks(parentWidth / 150))
-      .append("text") // Y axis label for voltage
-      .attr("transform", "rotate(-90)")
-      .attr("y", margin.right * 0.5) // Adjusted positioning
-      .attr("x", -height / 2) // Adjusted positioning
-      .attr("dy", "1em")
-      .attr("text-anchor", "middle")
-      .text("VOLTAGE (V)")
-      .classed("axis-label", true);
-
-    // Define clip path
-    svg
-      .append("defs")
-      .append("clipPath")
-      .attr("id", "clip")
-      .append("rect")
-      .attr("width", width - margin.left - margin.right>=0?width - margin.left - margin.right:0)
-      .attr("height", height - margin.top - margin.bottom>=0?height - margin.top - margin.bottom:0)
-      .attr("x", margin.left)
-      .attr("y", margin.top);
-
-    // Create line generator for current
-    const lineCurrent = d3
-      .line()
-      .x((d) => x(d.cycleTime))
-      .y((d) => yCurrent(+d.current));
-
-    // Create line generator for voltage
-    const lineVoltage = d3
-      .line()
-      .x((d) => x(d.cycleTime))
-      .y((d) => yVoltage(+d.voltage));
-
-    // Add line for current to SVG
-    // If user unselect current in the filter, then the line for current will not be created.
-    filterCurrentVoltage.Current &&
-      svg
-        .append("path")
-        .attr("class", "pathCurrent")
-        .attr("clip-path", "url(#clip)")
-        .datum(data)
-        .attr("fill", "none")
-        .attr("stroke", "#FFC700")
-        .attr("stroke-width", 3)
-        .attr("d", lineCurrent);
-
-    // Add line for voltage to SVG
-    // If user unselect current in the filter, then the line for voltage will not be created.
-    filterCurrentVoltage.Voltage &&
-      svg
-        .append("path")
-        .attr("class", "pathVoltage")
-        .attr("clip-path", "url(#clip)")
-        .datum(data)
-        .attr("fill", "none")
-        .attr("stroke", "#4CCD99")
-        .attr("stroke-width", 3)
-        .attr("d", lineVoltage);
-
-    // Legend for current
-    svg
-      .append("text")
-      .attr("x", width - margin.right)
-      .attr("y", margin.top)
-      .attr("fill", "#FFC700")
-      .text("Current")
-      .attr("text-anchor", "end")
-      .style("font-size", "1.2vw")
-      .style("alignment-baseline", "middle");
-
-    // Legend for voltage
-    svg
-      .append("text")
-      .attr("x", width - margin.right)
-      .attr("y", margin.top + 20)
-      .attr("fill", "#4CCD99")
-      .text("Voltage")
-      .attr("text-anchor", "end")
-      .style("font-size", "1.2vw")
-      .style("alignment-baseline", "middle");
-
-    // Enable zooming
-    const zoom = d3
-      .zoom()
-      .scaleExtent([1, 8])
-      .translateExtent([
-        [margin.left, margin.right],
-        [width - margin.left, height - margin.right],
-      ])
-      .extent([
-        [margin.left, margin.right],
-        [width - margin.left, height - margin.right],
-      ])
-      .on("zoom", zoomed);
-
-    svg.call(zoom);
-    function zoomed(event) {
-      const newX = event.transform.rescaleX(x);
-      const newYCurrent = event.transform.rescaleY(yCurrent);
-      const newYVoltage = event.transform.rescaleY(yVoltage);
-
-      // Update x axis line position without modifying the scale range
-      svg.select(".x-axis").call(xAxis.scale(newX));
-
-      // Update y axis lines' positions without modifying the scale range
-      svg.select(".y-axis-current").call(yAxisCurrent.scale(newYCurrent));
-      svg.select(".y-axis-voltage").call(yAxisVoltage.scale(newYVoltage));
-
-      // Update paths
-      svg.select(".pathVoltage").attr(
-        "d",
-        lineVoltage.x((d) => newX(d.cycleTime))
-      );
-      svg.select(".pathVoltage").attr(
-        "d",
-        lineVoltage.y((d) => newYVoltage(d.voltage))
-      );
-
-      svg.select(".pathCurrent").attr(
-        "d",
-        lineCurrent.x((d) => newX(d.cycleTime))
-      );
-
-      svg.select(".pathCurrent").attr(
-        "d",
-        lineCurrent.y((d) => newYCurrent(d.current))
-      );
+  //handle the filter selection by user
+  const handleFilterItemClick = (filterName) => {
+    if (
+      (filterName == "Current" && !filterCurrentVoltage.Voltage) ||
+      (filterName == "Voltage" && !filterCurrentVoltage.Current)
+    ) {
+      return;
     }
-  }
+    setFilterCurrentVoltage((prevFilters) => ({
+      ...prevFilters,
+      [filterName]: !prevFilters[filterName],
+    }));
+  };
+
+  const handleXAxisLabelClick = () => {
+    setSelectedAxis("X");
+    setShowPopupRenameLabel(true);
+  };
+
+  const handleYCurrentAxisLabelClick = () => {
+    setSelectedAxis("YCurrent");
+    setShowPopupRenameLabel(true);
+  };
+
+  const handleYVoltageAxisLabelClick = () => {
+    setSelectedAxis("YVoltage");
+    setShowPopupRenameLabel(true);
+  };
+
+  const handlePopupRenameLabelSubmit = (newLabel) => {
+    if (selectedAxis == "X") {
+      const xAxisLabel = d3.select(".x-axis-time .axis-label");
+      xAxisLabel.text("\u270F\uFE0F " + newLabel);
+    } else if (selectedAxis == "YCurrent") {
+      const yCurrentAxisLabel = d3.select(".y-axis-current .axis-label");
+      yCurrentAxisLabel.text("\u270F\uFE0F " + newLabel);
+    } else {
+      const yVoltageAxisLabel = d3.select(".y-axis-voltage .axis-label");
+      yVoltageAxisLabel.text("\u270F\uFE0F " + newLabel);
+    }
+  };
+
+  const handleCurrentLegendClick = () => {
+    setShowPopupColorLegend(true);
+    setSelectedLegend("current");
+  };
+
+  const handleVoltageLegendClick = () => {
+    setShowPopupColorLegend(true);
+    setSelectedLegend("voltage");
+  };
+
+  const handlePopupColorLegendSubmit = (color) => {
+    let legend;
+    let path;
+
+    if (selectedLegend == "current") {
+      legend = d3.select(".legend-current");
+      legend.style("fill", color);
+      if (filterChart === "Line") {
+        path = d3.select(".pathCurrent");
+        path.style("stroke", color);
+      } else {
+        const dots = d3.selectAll(".dot-current");
+        dots.style("fill", color);
+      }
+    } else {
+      legend = d3.select(".legend-voltage");
+      legend.style("fill", color);
+      if (filterChart === "Line") {
+        path = d3.select(".pathVoltage");
+        path.style("stroke", color);
+      } else {
+        const dots = d3.selectAll(".dot-voltage");
+        dots.style("fill", color);
+      }
+    }
+  };
+
+  const handlePopupCurrentFilterClick = () => {
+    setShowPopupFilterCurrent(true);
+  };
+
+  const handlePopupCurrentFilter = (notation, value) => {
+    const index = currentFilter.findIndex(
+      (filter) => filter.notation === notation
+    );
+    if (index !== -1) {
+      const updatedFilter = [...currentFilter];
+      updatedFilter[index] = { notation: notation, value: value };
+      setCurrentFilter(updatedFilter);
+    } else {
+      const newFilter = { notation: notation, value: value };
+      setCurrentFilter([...currentFilter, newFilter]);
+    }
+    setLatestSetFilter("current");
+  };
+
+  const handlePopupVoltageFilterClick = () => {
+    setShowPopupFilterVoltage(true);
+  };
+
+  const handlePopupVoltageFilter = (notation, value) => {
+    const index = voltageFilter.findIndex(
+      (filter) => filter.notation === notation
+    );
+    if (index !== -1) {
+      const updatedFilter = [...voltageFilter];
+      updatedFilter[index] = { notation: notation, value: value };
+      setVoltageFilter(updatedFilter);
+    } else {
+      const newFilter = { notation: notation, value: value };
+      setVoltageFilter([...voltageFilter, newFilter]);
+    }
+    setLatestSetFilter("voltage");
+  };
+
+  const handleFilterChartType = (chartType) => {
+    setFilterChart(chartType);
+  };
 
   return (
     <>
       {data.length != 0 ? (
         <>
+          {showPopupRenameLabel ? (
+            <PopupAxisLable
+              onClose={() => setShowPopupRenameLabel(false)}
+              onSubmit={handlePopupRenameLabelSubmit}
+            />
+          ) : null}
+          {showPopupColorLegend ? (
+            <PopupLegendColor
+              onClose={() => setShowPopupColorLegend(false)}
+              onSubmit={handlePopupColorLegendSubmit}
+            />
+          ) : null}
+          {showPopupFilterCurrent && (
+            <PopupFilterCondition
+              filter="CURRENT"
+              onClose={() => setShowPopupFilterCurrent(false)}
+              onSubmit={handlePopupCurrentFilter}
+            />
+          )}
+          {showPopupFilterVoltage && (
+            <PopupFilterCondition
+              filter="VOLTAGE"
+              onClose={() => setShowPopupFilterVoltage(false)}
+              onSubmit={handlePopupVoltageFilter}
+            />
+          )}
+          <FilterChartType
+            filterChartType={filterChart}
+            onFilter={handleFilterChartType}
+          />
+
+          <FilterLegned
+            filter={filterCurrentVoltage}
+            handleFilterItemClick={handleFilterItemClick}
+          />
+
+          <FilterData
+            filterType="Current"
+            filter={currentFilter}
+            filterCondition={handlePopupCurrentFilter}
+          />
+          <FilterData
+            filterType="Voltage"
+            filter={voltageFilter}
+            filterCondition={handlePopupVoltageFilter}
+          />
           <div className="chart-container  flex-grow-1" ref={chartRef}></div>
-          <div className="button-container">
-            <div className={` button `} onClick={() => downloadChart(chartRef)}>
-              DOWNLOAD CHART
-            </div>
-          </div>
+
+          <ComponentTooltip
+            tooltipX={tooltipX}
+            tooltipYCurrent={tooltipYCurrent}
+            tooltipYVoltage={tooltipYVoltage}
+          />
+
+          <DownloadChart chartRef={chartRef} />
         </>
       ) : (
         <div className="chart-container"> NO DATA TO SHOW</div>

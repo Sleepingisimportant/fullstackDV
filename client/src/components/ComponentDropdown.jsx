@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Dropdown from "react-bootstrap/Dropdown";
+import hosting from "./hosting";
 
-function DropdownComponent({
+function ComponentDropdown({
   onSelect: onSelect,
   api: api,
   dropdownText: dropdownText,
@@ -16,7 +17,7 @@ function DropdownComponent({
     const fetchData = async () => {
       try {
         const result = await fetch(
-          "https://fullstackdvserver.onrender.com/" + api
+          `${hosting}/${api}`
         )
           .then((response) => {
             if (response.status !== 200) {
@@ -49,6 +50,8 @@ function DropdownComponent({
 
   function handleSelect(selected) {
     setSelectedItem(selected);
+    console.log(selected)
+
     onSelect(Object.values(selected)[0]);
   }
 
@@ -92,4 +95,4 @@ function DropdownComponent({
   );
 }
 
-export default DropdownComponent;
+export default ComponentDropdown;

@@ -23,6 +23,15 @@ app.use(express.json());
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// Mapping object for transforming filter notation
+const notationMapping = {
+  greater: ">",
+  smaller: "<",
+  greaterEqual: ">=",
+  smallerEqual: "<=",
+  equal: "=",
+};
+
 //database connection
 const pool = mysql
   .createPool({
@@ -60,13 +69,27 @@ app.get("/getCycleNum/:fileID", async (req, res) => {
   }
 });
 
-app.get("/getCapacity/:fileID", async (req, res) => {
+app.get("/getCapacity/:fileID/:capacityFilter?", async (req, res) => {
   const fileID = req.params.fileID;
+  const capacityFilter = req.params.capacityFilter;
+  let query = "SELECT * FROM cycle_capacity WHERE fileID=?";
+  let queryParams = [fileID];
+  let rows;
   try {
-    const [rows] = await pool.query(
-      "SELECT * FROM cycle_capacity WHERE fileID=?",
-      [fileID]
-    );
+    if (capacityFilter.length > 0) {
+      const filters = JSON.parse(capacityFilter); // Parse the JSON string to an array
+      filters.forEach((filter, index) => {
+        const transformedNotation = notationMapping[filter.notation];
+        query += ` AND capacity ${transformedNotation} ?`;
+        queryParams.push(filter.value);
+      });
+      [rows] = await pool.query(query, queryParams);
+    } else {
+      [rows] = await pool.query("SELECT * FROM cycle_capacity WHERE fileID=?", [
+        fileID,
+      ]);
+    }
+
     res.status(200).send(rows);
   } catch (error) {
     console.error("Error fetching capacity:", error);
@@ -74,20 +97,52 @@ app.get("/getCapacity/:fileID", async (req, res) => {
   }
 });
 
-app.get("/getTCV/:fileID/:cycleNum", async (req, res) => {
-  const fileID = req.params.fileID;
-  const cycleNum = req.params.cycleNum;
-  try {
-    const [rows] = await pool.query(
-      "SELECT * FROM cycle_data WHERE fileID=? AND cycleNum=?",
-      [fileID, cycleNum]
-    );
-    res.status(200).send(rows);
-  } catch (error) {
-    console.error("Error fetching TCV:", error);
-    res.status(500).send("Internal Server Error");
+app.get(
+  "/getTCV/:fileID/:cycleNum/:currentFilter?/:voltageFilter?",
+  async (req, res) => {
+    const fileID = req.params.fileID;
+    const cycleNum = req.params.cycleNum;
+    const currentFilter = req.params.currentFilter;
+    const voltageFilter = req.params.voltageFilter;
+    let rows;
+
+    try {
+      if (currentFilter.length == 0 && voltageFilter.length == 0) {
+        [rows] = await pool.query(
+          "SELECT * FROM cycle_data WHERE fileID=? AND cycleNum=?",
+          [fileID, cycleNum]
+        );
+      } else {
+        let query = "SELECT * FROM cycle_data WHERE fileID=? AND cycleNum=?";
+        let queryParams = [fileID, cycleNum];
+        let filterCurrent;
+        let filterVoltage;
+        currentFilter && (filterCurrent = JSON.parse(currentFilter));
+        voltageFilter && (filterVoltage = JSON.parse(voltageFilter));
+
+        voltageFilter &&
+          currentFilter &&
+          filterCurrent.forEach((filter, index) => {
+            const transformedNotation = notationMapping[filter.notation];
+            query += ` AND current ${transformedNotation} ?`;
+            queryParams.push(filter.value);
+          });
+
+        filterVoltage.forEach((filter, index) => {
+          const transformedNotation = notationMapping[filter.notation];
+          query += ` AND voltage ${transformedNotation} ?`;
+          queryParams.push(filter.value);
+        });
+        [rows] = await pool.query(query, queryParams);
+      }
+
+      res.status(200).send(rows);
+    } catch (error) {
+      console.error("Error fetching TCV:", error);
+      res.status(500).send("Internal Server Error");
+    }
   }
-});
+);
 
 app.post(
   "/uploadFile",
