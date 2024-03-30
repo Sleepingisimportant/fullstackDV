@@ -59,7 +59,7 @@ The goal of this project is to develop a data analysis tool that visualizes data
    - The dropdown "CHOOSE FILE" lists all the uploaded files, including their name and upload time.
    - User can change color of the legend and edit the axis label name.
    - Users can select either line chart or scatter chart. (Default: Line chart)
-   - Users can add conditions to filter the capacity data. If the condition leads to no data being shown, the condition will be established. (Default: No condition)
+   - Users can add conditions to filter the capacity data. **If the condition leads to no data shown, the condition will NOT be established.** (Default: No condition)
    - Users can configure the chart and download it (including configuration).
 
 
@@ -70,6 +70,6 @@ The goal of this project is to develop a data analysis tool that visualizes data
    - User can change color of the legend and edit the axis label name.
    - Users can select either line chart or scatter chart. (Default: Line chart)
    - Users can select to show Voltage or Current or both. If Current is not being selected, then filter by current data is also hidden. Same applies to Voltage. (Default: Both)
-   - Users can add conditions to filter the current and voltage data. If the condition leads to no data being shown, the condition will be established. (Default: No condition)
+   - Users can add conditions to filter the current and voltage data. **If the condition leads to no data shown, the condition will NOT be established.** (Default: No condition)
    - Users can configure the chart and download it (including configuration).
 
