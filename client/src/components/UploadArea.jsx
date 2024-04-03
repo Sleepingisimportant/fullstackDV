@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import hosting from "./hosting";
 
 function UploadArea({ isUploading }) {
@@ -7,10 +7,28 @@ function UploadArea({ isUploading }) {
 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [progress, setProgress] = useState(0.0);
 
   const errorMsgFileTypeInconsistency = "WRONG FILE TYPE!! PLEASE TRY AGAIN!";
   const errorMsgFileTestNumInconsistency =
     "UPLOADED FILES ARE FROM DIFFERENT TESTS. PLEASE TRY AGAIN!";
+
+  useEffect(() => {
+    if (uploading) {
+      const eventSource = new EventSource(`${hosting}/progress`);
+
+      // Event listener for progress updates
+      eventSource.onmessage = (event) => {
+        // Update the progress indicator
+        setProgress(event.data);
+      };
+
+      // Event listener for error handling
+      eventSource.onerror = (error) => {
+        console.error("EventSource failed:", error);
+      };
+    }
+  }, [uploading]);
 
   const handleFileChange = (e) => {
     setUploadError(null);
@@ -56,9 +74,8 @@ function UploadArea({ isUploading }) {
       const formData = new FormData();
       formData.append("fileCapacity", fileCapacity);
       formData.append("fileTCV", fileTCV);
-     
 
-      await fetch( `${hosting}/uploadFile`, {
+      await fetch(`${hosting}/uploadFile`, {
         method: "POST",
         body: formData,
       })
@@ -74,7 +91,7 @@ function UploadArea({ isUploading }) {
           setUploading(false);
           isUploading(false);
 
-          window.location.reload();
+          // window.location.reload();
         });
     }
   };
@@ -83,9 +100,12 @@ function UploadArea({ isUploading }) {
     <>
       {/* Show uploading gif and hide the upload fields during the file uploading */}
       {uploading ? (
-        <div className="loading-indicator">
-          <img src="https://i.gifer.com/ZKZg.gif" alt="Loading" />
-        </div>
+        <>
+          <div className="loading-indicator">
+            <img src="https://i.gifer.com/ZKZg.gif" alt="Loading" />
+          <div className="block-subtitle"> {progress} %</div>
+          </div>
+        </>
       ) : (
         <div className="area-upload">
           <div className="block-upload">
@@ -93,7 +113,7 @@ function UploadArea({ isUploading }) {
             <label className="file-input-label">
               {fileCapacity == null
                 ? "Click to upload a file ....."
-                :  fileCapacity.name}
+                : fileCapacity.name}
               <input
                 id="fileCapacity"
                 type="file"
@@ -104,9 +124,7 @@ function UploadArea({ isUploading }) {
           <div className="block-upload">
             <div className="block-subtitle">File Current / Voltage</div>
             <label className="file-input-label">
-              {fileTCV == null
-                ? "Click to upload a file ....."
-                :  fileTCV.name}
+              {fileTCV == null ? "Click to upload a file ....." : fileTCV.name}
               <input
                 id="fileTCV"
                 type="file"

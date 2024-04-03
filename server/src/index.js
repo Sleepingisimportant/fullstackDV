@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import pg from "pg";
+import { EventEmitter } from "events";
 import dotenv from "dotenv";
-
 
 dotenv.config();
 
@@ -134,6 +134,10 @@ app.get(
   }
 );
 
+const delay = (ms) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
 app.post(
   "/uploadFile",
   upload.fields([{ name: "fileCapacity" }, { name: "fileTCV" }]),
@@ -163,17 +167,29 @@ app.post(
         .slice(1)
         .map((line) => line.split(","));
 
+      let progressCount = 0;
+      let prgress;
+      let lenTotal = tcvData.length + capacityData.length;
       // Insert data into cycle_capacity table
+      console.log("inserting Capacity");
+
       await Promise.all(
         capacityData.map(async (row) => {
           const queryString =
             'INSERT INTO "cycle_capacity" ("cycleNum", "capacity", "fileID") VALUES ($1, $2, $3)';
           await pool.query(queryString, [row[0], row[1], fileID]);
+          console.log("Capacity: " + row[0]);
+          progressCount += 1;
+          prgress = Math.round((progressCount / lenTotal)* 100);
+          // Emit progress update
+          progressEmitter.emit("progress", prgress);
         })
       );
-      console.log("insert Capacity");
+      console.log("inserted Capacity");
 
       // Insert data into cycle_data table
+      console.log("inserting TCV");
+
       await Promise.all(
         tcvData.map(async (row) => {
           const queryString =
@@ -185,11 +201,13 @@ app.post(
             row[3],
             fileID,
           ]);
+          progressCount += 1;
+          prgress = Math.round((progressCount / lenTotal)* 100);
+          // Emit progress update
+          progressEmitter.emit("progress", prgress);
         })
       );
-      console.log("insert TCV");
-
-      
+      console.log("inserted TCV");
 
       res.status(200).send({ ok: true });
     } catch (error) {
@@ -198,6 +216,27 @@ app.post(
     }
   }
 );
+
+  // Event listener for progress updates
+const progressEmitter = new EventEmitter();
+
+// Route for handling  progress updates
+app.get("/progress", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const progressHandler = (data) => {
+    res.write(`data: ${data}\n\n`);
+    console.log(`data: ${data}`);
+  };
+
+  progressEmitter.on("progress", progressHandler);
+
+  req.on("close", () => {
+    progressEmitter.off("progress", progressHandler);
+  });
+});
 
 app.use((err, req, res, next) => {
   err.statusCode = err.statusCode || 500;

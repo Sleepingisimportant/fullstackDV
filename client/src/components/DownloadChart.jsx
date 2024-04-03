@@ -20,13 +20,3 @@ function DownloadChart({chartRef}) {
 }
 
 export default DownloadChart;
-
-// function DownloadChart({ selectedFileID, selectedCycleNum }) {
-//   return (
-//     <div className="button-container">
-//       <div className={` button `} onClick={() => downloadChart(chartRef)}>
-//         DOWNLOAD CHART
-//       </div>
-//     </div>
-//   );
-// }

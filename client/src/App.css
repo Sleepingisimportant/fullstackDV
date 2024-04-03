@@ -168,11 +168,15 @@ input[type="file"] {
 .loading-indicator {
   padding: 5rem;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   border-radius: 10px;
   background-color: lightgry;
   animation: blinkBackground 1s infinite alternate;
+}
+.loading-indicator img{
+  margin-bottom: 1vw;
 }
 
 .error-text {

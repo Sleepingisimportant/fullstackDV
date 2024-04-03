@@ -1,6 +1,9 @@
 # **Data Visualization Tool**
 
-## **Version: 1.0**
+## **Version: 1.2**
+- **1.2**:
+   - added progress indicator when uploading files
+  
 - **1.1**:
    -  change database from MYSQL to PostgresSQL as PostgresSQL hosting by Render offers larger storage capacity (Bulk load data not allowed, thus, still encounter long upload times.) 
 - **1.0**:
@@ -26,7 +29,11 @@ The goal of this project is to develop a data analysis tool that visualizes data
 
 ### **VIDEO SHOWCASE**
 
+- **v1.0:**
 [![Watch the video](https://img.youtube.com/vi/JYviuRHKjyo/maxresdefault.jpg)](http://www.youtube.com/watch?v=JYviuRHKjyo "Version 1.0")
+
+- **v1.2:**  Add Progress Indicator During Upload
+ [![Watch the video](https://img.youtube.com/vi/5R3zAsSte8w/maxresdefault.jpg)](http://www.youtube.com/watch?v=5R3zAsSte8w "Version 1.2 progress indicator")
 
 ### **TECHNICAL STRUCTURE**
 
