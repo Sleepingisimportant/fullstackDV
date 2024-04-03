@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 function PopupLegendColor({ onClose, onSubmit }) {
-  const [selectedColor, setSelectedColor] = useState(""); // Initialize selected color state
+  const [selectedColor, setSelectedColor] = useState("green"); // Initialize selected color state
 
   const handleSubmit = () => {
     // Pass both the new label and selected color to the onSubmit function

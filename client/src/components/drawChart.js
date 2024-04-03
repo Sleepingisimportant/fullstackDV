@@ -111,7 +111,7 @@ export function drawChartCapacity(
   svg
     .append("defs")
     .append("clipPath")
-    .attr("id", "scatter-clip")
+    .attr("id", "clip")
     .append("rect")
     .attr(
       "width",
@@ -139,8 +139,8 @@ export function drawChartCapacity(
       .attr("cx", (d) => x(d.cycleNum))
       .attr("cy", (d) => y(+d.capacity))
       .attr("r", 2) // Adjust the radius of the circles as needed
-      .attr("fill",legendColorCapacity)
-      .attr("clip-path", "url(#scatter-clip)");
+      .attr("fill", legendColorCapacity)
+      .attr("clip-path", "url(#clip)");
 
   // Create line generator
   const line = d3
@@ -148,8 +148,7 @@ export function drawChartCapacity(
     .x((d) => x(d.cycleNum))
     .y((d) => y(+d.capacity));
 
-  // Add line to SVG
-  filterChart == "Line" &&
+  filterChart === "Line" &&
     svg
       .append("path")
       .attr("class", "paths")
@@ -219,11 +218,12 @@ export function drawChartCapacity(
   }
 }
 
-
 export function drawChartTimeCurrent(
   data,
   chartRef,
   filterChart,
+  legendColorCurrent,
+  legendColorVoltage,
   handleXAxisLabelClick,
   handleYCurrentAxisLabelClick,
   handleYVoltageAxisLabelClick,
@@ -405,8 +405,8 @@ export function drawChartTimeCurrent(
       .attr("cx", (d) => x(d.cycleTime))
       .attr("cy", (d) => yCurrent(+d.current))
       .attr("r", 4)
-      .attr("fill", "blue")
-      .attr("clip-path", "url(#scatter-clip)");
+      .attr("fill", legendColorCurrent)
+      .attr("clip-path", "url(#clip)");
 
   // Add scatter points for voltage
   filterChart == "Scatter" &&
@@ -420,8 +420,8 @@ export function drawChartTimeCurrent(
       .attr("cx", (d) => x(d.cycleTime))
       .attr("cy", (d) => yVoltage(+d.voltage))
       .attr("r", 4)
-      .attr("fill", "orange")
-      .attr("clip-path", "url(#scatter-clip)");
+      .attr("fill", legendColorVoltage)
+      .attr("clip-path", "url(#clip)");
 
   // Create line generator for current
   const lineCurrent = d3
@@ -445,7 +445,7 @@ export function drawChartTimeCurrent(
       .attr("clip-path", "url(#clip)")
       .datum(data)
       .attr("fill", "none")
-      .attr("stroke", "blue")
+      .attr("stroke", legendColorCurrent)
       .attr("stroke-width", 3)
       .attr("d", lineCurrent);
 
@@ -459,7 +459,7 @@ export function drawChartTimeCurrent(
       .attr("clip-path", "url(#clip)")
       .datum(data)
       .attr("fill", "none")
-      .attr("stroke", "orange")
+      .attr("stroke", legendColorVoltage)
       .attr("stroke-width", 3)
       .attr("d", lineVoltage);
 
@@ -469,7 +469,7 @@ export function drawChartTimeCurrent(
       .append("text")
       .attr("x", width - margin.right)
       .attr("y", margin.top)
-      .attr("fill", "blue")
+      .attr("fill", legendColorCurrent)
       .text("\u270F\uFE0F Current")
       .attr("text-anchor", "end")
       .style("alignment-baseline", "middle")
@@ -483,7 +483,7 @@ export function drawChartTimeCurrent(
       .append("text")
       .attr("x", width - margin.right)
       .attr("y", margin.top + 20)
-      .attr("fill", "orange")
+      .attr("fill", legendColorVoltage)
       .text("\u270F\uFE0F Voltage")
       .attr("text-anchor", "end")
       .style("alignment-baseline", "middle")

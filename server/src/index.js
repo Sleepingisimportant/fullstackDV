@@ -1,17 +1,9 @@
 import express from "express";
 import cors from "cors";
 import multer from "multer";
-import mysql from "mysql2";
+import pg from "pg";
 import dotenv from "dotenv";
 
-import fs from "fs/promises";
-import { createReadStream } from "node:fs";
-
-import { fileURLToPath } from "url";
-import path, { dirname } from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 dotenv.config();
 
@@ -33,21 +25,20 @@ const notationMapping = {
 };
 
 //database connection
-const pool = mysql
-  .createPool({
-    host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DATABASE,
-    port: process.env.MYSQL_PORT,
-    flags: ["+LOCAL_FILES"],
-  })
-  .promise();
+const pool = new pg.Pool({
+  user: process.env.PG_USER,
+  host: process.env.PG_HOST,
+  database: process.env.PG_DATABASE,
+  password: process.env.PG_PASSWORD,
+  port: process.env.PG_PORT,
+  ssl: true,
+});
 
 //API
 app.get("/getFiles", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM uploadedFile");
+    const query = 'SELECT * FROM "uploadedFile"';
+    const { rows } = await pool.query(query);
     res.status(200).send(rows);
   } catch (error) {
     console.error("Error fetching files:", error);
@@ -58,11 +49,10 @@ app.get("/getFiles", async (req, res) => {
 app.get("/getCycleNum/:fileID", async (req, res) => {
   const fileID = req.params.fileID;
   try {
-    const result = await pool.query(
-      "SELECT cycleNum FROM cycle_capacity WHERE fileID=?",
-      [fileID]
-    );
-    res.status(200).send(result[0]);
+    const query =
+      'SELECT "cycleNum" FROM "cycle_capacity" WHERE "fileID"=$1 ORDER BY "cycleNum"';
+    const { rows } = await pool.query(query, [fileID]);
+    res.status(200).send(rows);
   } catch (error) {
     console.error("Error fetching cycle number:", error);
     res.status(500).send("Internal Server Error");
@@ -72,23 +62,21 @@ app.get("/getCycleNum/:fileID", async (req, res) => {
 app.get("/getCapacity/:fileID/:capacityFilter?", async (req, res) => {
   const fileID = req.params.fileID;
   const capacityFilter = req.params.capacityFilter;
-  let query = "SELECT * FROM cycle_capacity WHERE fileID=?";
-  let queryParams = [fileID];
-  let rows;
+  let query = 'SELECT * FROM "cycle_capacity" WHERE "fileID"=$1';
+  let queryParams = [parseInt(fileID)];
+
   try {
     if (capacityFilter.length > 0) {
-      const filters = JSON.parse(capacityFilter); // Parse the JSON string to an array
+      const filters = JSON.parse(capacityFilter);
       filters.forEach((filter, index) => {
         const transformedNotation = notationMapping[filter.notation];
-        query += ` AND capacity ${transformedNotation} ?`;
+        query += ` AND "capacity" ${transformedNotation} $${index + 2}`;
         queryParams.push(filter.value);
       });
-      [rows] = await pool.query(query, queryParams);
-    } else {
-      [rows] = await pool.query("SELECT * FROM cycle_capacity WHERE fileID=?", [
-        fileID,
-      ]);
     }
+    query += ` ORDER BY "cycleNum"`;
+
+    const { rows } = await pool.query(query, queryParams);
 
     res.status(200).send(rows);
   } catch (error) {
@@ -104,17 +92,15 @@ app.get(
     const cycleNum = req.params.cycleNum;
     const currentFilter = req.params.currentFilter;
     const voltageFilter = req.params.voltageFilter;
-    let rows;
 
+    let query;
+    let queryParams = [fileID, cycleNum];
+
+    let indexStatement = 2;
+
+    query = 'SELECT * FROM "cycle_data" WHERE "fileID"=$1 AND "cycleNum"=$2';
     try {
-      if (currentFilter.length == 0 && voltageFilter.length == 0) {
-        [rows] = await pool.query(
-          "SELECT * FROM cycle_data WHERE fileID=? AND cycleNum=?",
-          [fileID, cycleNum]
-        );
-      } else {
-        let query = "SELECT * FROM cycle_data WHERE fileID=? AND cycleNum=?";
-        let queryParams = [fileID, cycleNum];
+      if (!(currentFilter.length == 0 && voltageFilter.length == 0)) {
         let filterCurrent;
         let filterVoltage;
         currentFilter && (filterCurrent = JSON.parse(currentFilter));
@@ -123,18 +109,22 @@ app.get(
         voltageFilter &&
           currentFilter &&
           filterCurrent.forEach((filter, index) => {
+            indexStatement += 1;
             const transformedNotation = notationMapping[filter.notation];
-            query += ` AND current ${transformedNotation} ?`;
+            query += ` AND "current" ${transformedNotation} $${indexStatement}`;
             queryParams.push(filter.value);
           });
 
         filterVoltage.forEach((filter, index) => {
+          indexStatement += 1;
           const transformedNotation = notationMapping[filter.notation];
-          query += ` AND voltage ${transformedNotation} ?`;
+          query += ` AND "voltage" ${transformedNotation} $${indexStatement}`;
           queryParams.push(filter.value);
         });
-        [rows] = await pool.query(query, queryParams);
       }
+      query += ` ORDER BY "cycleTime" `;
+
+      const { rows } = await pool.query(query, queryParams);
 
       res.status(200).send(rows);
     } catch (error) {
@@ -151,56 +141,58 @@ app.post(
     try {
       const fileCapacity = req.files["fileCapacity"][0];
       const fileTCV = req.files["fileTCV"][0];
-      const testName =
-        req.files["fileCapacity"][0]["originalname"].match(/[^_]+_[^_]+/)[0];
+      const testName = fileCapacity.originalname.match(/[^_]+_[^_]+/)[0];
 
-      const uploadFile = await pool.query(
-        "INSERT INTO uploadedFile (testName) VALUES (?)",
+      // Insert a record into the uploadedFile table and retrieve the fileID
+      const uploadFileResult = await pool.query(
+        'INSERT INTO "uploadedFile" ("testName") VALUES ($1) RETURNING "fileID"',
         [testName]
       );
-      const fileID = uploadFile[0].insertId;
+      const fileID = uploadFileResult.rows[0].fileID;
+      // Read file contents
+      const capacityData = fileCapacity.buffer
+        .toString("utf8")
+        .trim()
+        .split("\n")
+        .slice(1)
+        .map((line) => line.split(","));
+      const tcvData = fileTCV.buffer
+        .toString("utf8")
+        .trim()
+        .split("\n")
+        .slice(1)
+        .map((line) => line.split(","));
 
-      // save the uploaded file to the backend
-      const fileCapacityPath = path.join(__dirname, fileCapacity.originalname);
-      await fs.writeFile(fileCapacityPath, fileCapacity.buffer);
+      // Insert data into cycle_capacity table
+      await Promise.all(
+        capacityData.map(async (row) => {
+          const queryString =
+            'INSERT INTO "cycle_capacity" ("cycleNum", "capacity", "fileID") VALUES ($1, $2, $3)';
+          await pool.query(queryString, [row[0], row[1], fileID]);
+        })
+      );
+      console.log("insert Capacity");
 
-      const fileTCVPath = path.join(__dirname, fileTCV.originalname);
-      await fs.writeFile(fileTCVPath, fileTCV.buffer);
+      // Insert data into cycle_data table
+      await Promise.all(
+        tcvData.map(async (row) => {
+          const queryString =
+            'INSERT INTO "cycle_data" ("cycleNum", "cycleTime", "current", "voltage", "fileID") VALUES ($1, $2, $3, $4, $5)';
+          await pool.query(queryString, [
+            row[0],
+            row[1],
+            row[2],
+            row[3],
+            fileID,
+          ]);
+        })
+      );
+      console.log("insert TCV");
 
-      // use LOAD DATA INFILE to insert file content into sql db
-      const sqlLoadCapacity = `LOAD DATA LOCAL INFILE '${fileCapacityPath}' INTO TABLE cycle_capacity 
-      FIELDS TERMINATED BY ',' 
-      LINES TERMINATED BY '\n' 
-      IGNORE 1 ROWS 
-      (@cycle_num, capacity, cycleID, fileID)
-      SET cycleNum = @cycle_num, fileID = '${fileID}'`;
-      await pool.query({
-        sql: sqlLoadCapacity,
-        infileStreamFactory: () => createReadStream(fileCapacityPath),
-      });
-
-      const sqlLoadTCV = `
-      LOAD DATA LOCAL INFILE '${fileTCVPath}' 
-      INTO TABLE cycle_data 
-      FIELDS TERMINATED BY ',' 
-      LINES TERMINATED BY '\n' 
-      IGNORE 1 ROWS
-      (@cycle_num, @time, current, voltage, TCVID, fileID)
-      SET cycleNum = @cycle_num, cycleTime = @time, fileID = '${fileID}'`;
-      const result = await pool.query({
-        sql: sqlLoadTCV,
-        infileStreamFactory: () => createReadStream(fileTCVPath),
-      });
-
-      // delete the files in the directory
-      await fs.unlink(fileCapacityPath);
-      await fs.unlink(fileTCVPath);
+      
 
       res.status(200).send({ ok: true });
     } catch (error) {
-      await pool.query("DELETE FROM cycle_data WHERE fileID = ?", [fileID]);
-      await pool.query("DELETE FROM cycle_capacity WHERE fileID = ?", [fileID]);
-      await pool.query("DELETE FROM uploadedFile WHERE fileID = ?", [fileID]);
       console.error("Error uploading file:", error);
       res.status(500).send("Internal Server Error");
     }
@@ -210,11 +202,6 @@ app.post(
 app.use((err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || "error";
-
-  res.status(err.statusCode).json({
-    status: err.status,
-    message: err.message,
-  });
 });
 
 app.listen(3000, () => {

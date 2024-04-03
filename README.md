@@ -1,6 +1,8 @@
 # **Data Visualization Tool**
 
 ## **Version: 1.0**
+- **1.1**:
+   -  change database from MYSQL to PostgresSQL as PostgresSQL hosting by Render offers larger storage capacity (Bulk load data not allowed, thus, still encounter long upload times.) 
 - **1.0**:
    - add features: 
       - edit axis label, legend color
@@ -9,7 +11,6 @@
 - **0.3**:
    -  deployed the solution on netifly (front) and render(server)
 - **0.2**:
-  - improved load csv speed (from over 30 seconds to 1 second). Using LOAD DATA INFILE instead of inserting rows respectively.
   - improved upload file error handling, including
     - block users upload files from different test
     - force users to upload matched file type to the corresponding upload field
@@ -31,11 +32,11 @@ The goal of this project is to develop a data analysis tool that visualizes data
 
 - **Backend:** Utilizes Node.js and Express.js for building the backend.
 - **Frontend:** Built with React (Vite), and the page is responsive to a certain degree.
-- **Database**: MySQL 
+- **Database**: PostgresSQL 
 - **DEPLOYMENT**: 
    - **Backend:**  Render
    - **Frontend:** Netilify
-   - **Database**: freemysqlhosting.net
+   - **Database**: PostgresSQL from Render
 
 
 ### **ASSUMPTION & RESTRICTION**

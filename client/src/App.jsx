@@ -39,7 +39,8 @@ function App() {
                 dropdownText={"CHOOSE FILE:"}
                 dropdownItemText={"FILE: "}
                 onSelect={(select) => {
-                  setSelectedFileID(select);
+                  const selectedFileID=select[0];
+                  setSelectedFileID(selectedFileID);
                 }}
               />
             </div>
@@ -50,16 +51,18 @@ function App() {
           <div className="dashboard-block">
             <div className="same-row-space-between">
               <div className="block-title"> Current / Voltage</div>
-              <ComponentDropdown
+             {selectedFileID&&<ComponentDropdown
                 selectedFileID={selectedFileID}
                 api={`getCycleNum/${selectedFileID}`}
                 queryDataShow={0}
                 dropdownText={"CHOOSE CYCLE:"}
                 dropdownItemText={"CYCLE "}
                 onSelect={(select) => {
-                  setSelectedCycleNum(select);
+                  const selectedCycleNum=select[0];
+                  setSelectedCycleNum(selectedCycleNum);
+
                 }}
-              />
+              />}
             </div>
             <ChartTCV
               selectedFileID={selectedFileID}

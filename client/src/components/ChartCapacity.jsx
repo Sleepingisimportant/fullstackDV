@@ -29,25 +29,26 @@ function ChartCapacity({ selectedFileID }) {
       try {
         const capacityFilterString = JSON.stringify(capacityFilter);
         const url = `${hosting}/getCapacity/${selectedFileID}/${capacityFilterString}`;
-        const result = await fetch(url)
-          .then((response) => {
-            if (response.status !== 200) {
-              throw new Error("Fetch data fail!");
-            }
-            return response.json();
-          })
-          .then((data) => {
-            //if filter return no data, then delete the filter
-            if (capacityFilter.length > 0 && data.length === 0) {
-              setCapacityFilter((prevCapacityFilter) => {
-                const newCapacityFilter = prevCapacityFilter.slice(0, -1);
-                return newCapacityFilter;
-              });
-            } else {
-              setData(data);
-            }
-            return data;
-          });
+        selectedFileID != null &&
+          (await fetch(url)
+            .then((response) => {
+              if (response.status !== 200) {
+                throw new Error("Fetch data fail!");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              //if filter return no data, then delete the filter
+              if (capacityFilter.length > 0 && data.length === 0) {
+                setCapacityFilter((prevCapacityFilter) => {
+                  const newCapacityFilter = prevCapacityFilter.slice(0, -1);
+                  return newCapacityFilter;
+                });
+              } else {
+                setData(data);
+              }
+              return data;
+            }));
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -62,7 +63,6 @@ function ChartCapacity({ selectedFileID }) {
     // Clear previous chart if it exists
     d3.select(chartRef.current).selectAll("*").remove();
 
-    // drawChart();
     drawChartCapacity(
       data,
       chartRef,
@@ -155,18 +155,18 @@ function ChartCapacity({ selectedFileID }) {
     <>
       {data.length != 0 ? (
         <>
-          {showPopupRenameLabel ? (
+          {showPopupRenameLabel && (
             <PopupAxisLable
               onClose={() => setShowPopupRenameLabel(false)}
               onSubmit={handlePopupRenameLabelSubmit}
             />
-          ) : null}
-          {showPopupColorLegend ? (
+          )}
+          {showPopupColorLegend && (
             <PopupLegendColor
               onClose={() => setShowPopupColorLegend(false)}
               onSubmit={handlePopupColorLegendSubmit}
             />
-          ) : null}
+          )}
 
           <FilterChartType
             filterChartType={filterChart}

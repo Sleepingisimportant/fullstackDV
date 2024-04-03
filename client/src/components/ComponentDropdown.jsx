@@ -16,9 +16,7 @@ function ComponentDropdown({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await fetch(
-          `${hosting}/${api}`
-        )
+        const result = await fetch(`${hosting}/${api}`)
           .then((response) => {
             if (response.status !== 200) {
               throw new Error("Fetch data fail!");
@@ -26,10 +24,16 @@ function ComponentDropdown({
             return response.json();
           })
           .then((data) => {
-            // Handle successful response data
             if (data.length > 0) {
               api == "getFiles" ? setData(data.reverse()) : setData(data);
+              if (selectedItem === null) {
+                const defaultSelected = data[0];
+
+                setSelectedItem(defaultSelected);
+                onSelect(Object.values(defaultSelected));
+              }
             }
+          
             return data;
           });
       } catch (error) {
@@ -37,22 +41,15 @@ function ComponentDropdown({
       }
     };
     fetchData();
-    setSelectedItem(null);
+  
+    
+
   }, [selectedFileID]);
 
-  useEffect(() => {
-    if (data && data.length > 0 && selectedItem === null) {
-      const defaultSelected = data[0];
-      setSelectedItem(defaultSelected);
-      onSelect(Object.values(defaultSelected));
-    }
-  }, [data, selectedItem, onSelect]);
 
   function handleSelect(selected) {
     setSelectedItem(selected);
-    console.log(selected)
-
-    onSelect(Object.values(selected)[0]);
+    onSelect(Object.values(selected));
   }
 
   return (

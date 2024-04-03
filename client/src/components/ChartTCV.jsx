@@ -26,19 +26,14 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
   const [currentFilter, setCurrentFilter] = useState([]);
   const [voltageFilter, setVoltageFilter] = useState([]);
   const [latestSetFilter, setLatestSetFilter] = useState("");
+  const [legendColorCurrent, setLegendColorCurrent] = useState("blue");
+  const [legendColorVoltage, setLegendColorVoltage] = useState("orange");
+
   const [filterCurrentVoltage, setFilterCurrentVoltage] = useState({
     Voltage: true,
     Current: true,
   });
   const chartRef = useRef();
-
-  const notationMapping = {
-    greater: ">",
-    smaller: "<",
-    greaterEqual: ">=",
-    smallerEqual: "<=",
-    equal: "=",
-  };
 
   useEffect(() => {
     // api - fetch current voltage data when the selected file and cycle is updated
@@ -48,32 +43,34 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
         const voltageFilterString = JSON.stringify(voltageFilter);
 
         const url = `${hosting}/getTCV/${selectedFileID}/${selectedCycleNum}/${currentFilterString}/${voltageFilterString}`;
-        const result = await fetch(url)
-          .then((response) => {
-            if (response.status !== 200) {
-              throw new Error("Fetch data fail!");
-            }
-            return response.json();
-          })
-          .then((data) => {
-            //if filter return no data, then delete the filter
-            setData(data);
-            if (latestSetFilter && data.length === 0) {
-              if (latestSetFilter == "current") {
-                setCurrentFilter((prevCurrentFilter) => {
-                  const newCurrentFilter = prevCurrentFilter.slice(0, -1);
-                  return newCurrentFilter;
-                });
-              } else {
-                setVoltageFilter((prevVoltageFilter) => {
-                  const newVoltageFilter = prevVoltageFilter.slice(0, -1);
-                  return newVoltageFilter;
-                });
+        selectedFileID != null &&
+          selectedCycleNum != null &&
+          (await fetch(url)
+            .then((response) => {
+              if (response.status !== 200) {
+                throw new Error("Fetch data fail!");
               }
-            } else {
+              return response.json();
+            })
+            .then((data) => {
+              //if filter return no data, then delete the filter
               setData(data);
-            }
-          });
+              if (latestSetFilter && data.length === 0) {
+                if (latestSetFilter == "current") {
+                  setCurrentFilter((prevCurrentFilter) => {
+                    const newCurrentFilter = prevCurrentFilter.slice(0, -1);
+                    return newCurrentFilter;
+                  });
+                } else {
+                  setVoltageFilter((prevVoltageFilter) => {
+                    const newVoltageFilter = prevVoltageFilter.slice(0, -1);
+                    return newVoltageFilter;
+                  });
+                }
+              } else {
+                setData(data);
+              }
+            }));
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -86,11 +83,13 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
     if (data.length === 0) return;
     // Clear previous chart if it exists
     d3.select(chartRef.current).selectAll("*").remove();
-    // drawChart();
+
     drawChartTimeCurrent(
       data,
       chartRef,
       filterChart,
+      legendColorCurrent,
+      legendColorVoltage,
       handleXAxisLabelClick,
       handleYCurrentAxisLabelClick,
       handleYVoltageAxisLabelClick,
@@ -106,11 +105,13 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
     window.addEventListener("resize", () => {
       // Clear previous chart if it exists
       d3.select(chartRef.current).selectAll("*").remove();
-      // drawChart();
+
       drawChartTimeCurrent(
         data,
         chartRef,
         filterChart,
+        legendColorCurrent,
+        legendColorVoltage,
         handleXAxisLabelClick,
         handleYCurrentAxisLabelClick,
         handleYVoltageAxisLabelClick,
@@ -124,9 +125,6 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
     });
   }, [data, filterCurrentVoltage, filterChart]);
 
-  useEffect(() => {}, [filterChart]);
-
-  //handle the filter selection by user
   const handleFilterItemClick = (filterName) => {
     if (
       (filterName == "Current" && !filterCurrentVoltage.Voltage) ||
@@ -185,6 +183,8 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
     if (selectedLegend == "current") {
       legend = d3.select(".legend-current");
       legend.style("fill", color);
+      setLegendColorCurrent(color);
+
       if (filterChart === "Line") {
         path = d3.select(".pathCurrent");
         path.style("stroke", color);
@@ -195,6 +195,8 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
     } else {
       legend = d3.select(".legend-voltage");
       legend.style("fill", color);
+      setLegendColorVoltage(color);
+
       if (filterChart === "Line") {
         path = d3.select(".pathVoltage");
         path.style("stroke", color);
@@ -203,10 +205,6 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
         dots.style("fill", color);
       }
     }
-  };
-
-  const handlePopupCurrentFilterClick = () => {
-    setShowPopupFilterCurrent(true);
   };
 
   const handlePopupCurrentFilter = (notation, value) => {
@@ -222,10 +220,6 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
       setCurrentFilter([...currentFilter, newFilter]);
     }
     setLatestSetFilter("current");
-  };
-
-  const handlePopupVoltageFilterClick = () => {
-    setShowPopupFilterVoltage(true);
   };
 
   const handlePopupVoltageFilter = (notation, value) => {
@@ -251,18 +245,18 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
     <>
       {data.length != 0 ? (
         <>
-          {showPopupRenameLabel ? (
+          {showPopupRenameLabel && (
             <PopupAxisLable
               onClose={() => setShowPopupRenameLabel(false)}
               onSubmit={handlePopupRenameLabelSubmit}
             />
-          ) : null}
-          {showPopupColorLegend ? (
+          )}
+          {showPopupColorLegend && (
             <PopupLegendColor
               onClose={() => setShowPopupColorLegend(false)}
               onSubmit={handlePopupColorLegendSubmit}
             />
-          ) : null}
+          )}
           {showPopupFilterCurrent && (
             <PopupFilterCondition
               filter="CURRENT"
@@ -281,30 +275,30 @@ function ChartTCV({ selectedFileID, selectedCycleNum }) {
             filterChartType={filterChart}
             onFilter={handleFilterChartType}
           />
-
           <FilterLegned
             filter={filterCurrentVoltage}
             handleFilterItemClick={handleFilterItemClick}
           />
-
-          <FilterData
-            filterType="Current"
-            filter={currentFilter}
-            filterCondition={handlePopupCurrentFilter}
-          />
-          <FilterData
-            filterType="Voltage"
-            filter={voltageFilter}
-            filterCondition={handlePopupVoltageFilter}
-          />
+          {filterCurrentVoltage.Current && (
+            <FilterData
+              filterType="Current"
+              filter={currentFilter}
+              filterCondition={handlePopupCurrentFilter}
+            />
+          )}
+          {filterCurrentVoltage.Voltage && (
+            <FilterData
+              filterType="Voltage"
+              filter={voltageFilter}
+              filterCondition={handlePopupVoltageFilter}
+            />
+          )}
           <div className="chart-container  flex-grow-1" ref={chartRef}></div>
-
           <ComponentTooltip
             tooltipX={tooltipX}
             tooltipYCurrent={tooltipYCurrent}
             tooltipYVoltage={tooltipYVoltage}
           />
-
           <DownloadChart chartRef={chartRef} />
         </>
       ) : (
